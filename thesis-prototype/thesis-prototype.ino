@@ -1,3 +1,4 @@
+
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include "DHTesp.h"
@@ -16,6 +17,8 @@
 //Write APIKEY for Channel 2 = N4CZSPBXEJF4U16D
 //Read APIKEY for Channel 3 = 0YG3YFK75U80P940
 //Write APIKEY for Channel 3 = XOIG3YFOHR4OK8MW
+//Read APIKEY for Channel 4 = KDIUJMWUGI9QPHPJ
+//Write APIKEY for Channel 4 = S2E20R36YWWDAMMC
 
 
 const char* server = "api.thingspeak.com";
@@ -67,7 +70,8 @@ void loop() {
     Serial.println(lastUpdateTime);
     if (currentMillis - lastUpdateTime >=  postingInterval) {
       lastUpdateTime = currentMillis;
-      uploadReadings(dht.computeHeatIndex(35, 80, false), 35, 80);
+      getReadings();
+      uploadReadings(heatIndex, temperature, relativeHumidity);
       getTresholds();
     }
     delay(1000);
@@ -144,7 +148,7 @@ void getHITreshold(){
     client.print(url + " HTTP/1.1\r\n");
     client.print("HOST: api.thingspeak.com\r\n");
     client.print("Connection: close\r\n\r\n");
-    delay(5000);
+    delay(1000);
     char status[32] = {0};
     client.readBytesUntil('\r', status, sizeof(status));
     if (strcmp(status, "HTTP/1.1 200 OK") != 0) {
@@ -192,7 +196,7 @@ void getRHTreshold(){
     client.print(url + " HTTP/1.1\r\n");
     client.print("HOST: api.thingspeak.com\r\n");
     client.print("Connection: close\r\n\r\n");
-    delay(5000);
+    delay(1000);
     char status[32] = {0};
     client.readBytesUntil('\r', status, sizeof(status));
     if (strcmp(status, "HTTP/1.1 200 OK") != 0) {
@@ -235,7 +239,7 @@ void connectWifi(){
   Serial.print("Connecting...");
   wifiMulti.addAP("PASCUAPARASAMASA", "lalalalala");
   wifiMulti.addAP("PLDTHOMEDSL17A6F", "PLDTWIFI17A67");
-  wifiMulti.addAP("PLDTMyDSL", "pldtwifiD6346");
+  wifiMulti.addAP("PLDT2GRamos", "2243taradale");
   while (wifiMulti.run() != WL_CONNECTED) { // Wait for the Wi-Fi to connect: scan for Wi-Fi networks, and connect to the strongest of the networks above
     delay(1000);
     Serial.print('.');
