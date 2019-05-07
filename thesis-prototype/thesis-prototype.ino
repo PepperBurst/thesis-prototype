@@ -12,7 +12,7 @@
 //Read APIKEY for Channel 1 = EX1DVX903H75LZCS
 //Write APIKEY for Channel 1 = 459JH64HVXZMSZQJ
 //TalkBack ID for Channel 1 = 32023;
-//TalkBack APIKEY for Channel 1 = WGTNUEUDPAYLS3PN
+//TalkBack APIKEY  = WGTNUEUDPAYLS3PN
 //Read APIKEY for Channel 2 = SR26KL05EWR7E2YZ
 //Write APIKEY for Channel 2 = N4CZSPBXEJF4U16D
 //Read APIKEY for Channel 3 = 0YG3YFK75U80P940
@@ -24,6 +24,7 @@
 const char* server = "api.thingspeak.com";
 String writeApiKey = "XOIG3YFOHR4OK8MW"; // set Write API Key
 String readApiKey = "0YG3YFK75U80P940";
+String tbApiKey = "WGTNUEUDPAYLS3PN";
 int sent = 0;
 bool delayForMist = false;
 int countDelay = 0;
@@ -59,6 +60,7 @@ void setup() {
   Serial.print("Posting Interval:\t");
   Serial.println(postingInterval);
   getTresholds();
+  getTalkbackCommand();
 }
 
 void loop() {
@@ -73,6 +75,7 @@ void loop() {
       getReadings();
       uploadReadings(heatIndex, temperature, relativeHumidity);
       getTresholds();
+      getTalkbackCommand();
     }
     delay(1000);
 //    getReadings();
@@ -235,6 +238,40 @@ void getRHTreshold(){
   }
 }
 
+void getTalkbackCommand(){
+  WiFiClient client;
+  String url = "/talkbacks/32023/commands/execute?api_key=";
+  url += tbApiKey;
+  if(client.connect(server, 80)){
+    client.print(String("GET "));
+    client.print(url + " HTTP/1.1\r\n");
+    client.print("HOST: api.thingspeak.com\r\n");
+    client.print("Connection: close\r\n\r\n");
+    delay(1000);
+    char status[32] = {0};
+    client.readBytesUntil('\r', status, sizeof(status));
+    if (strcmp(status, "HTTP/1.1 200 OK") != 0) {
+      Serial.print(F("Unexpected response: "));
+      Serial.println(status);
+      return;
+    }
+    char endOfHeaders[] = "\r\n\r\n";
+    if (!client.find(endOfHeaders)) {
+      Serial.println(F("Invalid response"));
+      return;
+    }
+    Serial.println("Getting talkback commands...");
+    String all_data;
+    while(client.available()){
+      all_data += client.readStringUntil('\n');
+    }
+    Serial.println(all_data);
+    if(all_data=="MIST_RELEASE"){
+      releaseMist();
+    }
+  }
+}
+
 void connectWifi(){
   Serial.print("Connecting...");
   wifiMulti.addAP("PASCUAPARASAMASA", "lalalalala");
@@ -367,15 +404,51 @@ void sendHeatIndex(float heatInd){
   client.stop();
 }
 
+void sendTalkBack(String command){
+  WiFiClient client;=
+  Serial.println("Uploading command...");
+  if(client.connect(server, 80)){
+    Serial.println("Wifi Client connected");
+    String postStr = tbApiKey;
+    postStr += fieldTemperature;
+    postStr += String(temp);
+//    postStr += "\r\n\r\n";
+    postStr += "";
+    client.print("POST /update HTTP/1.1\n");
+    client.print("HOST: api.thingspeak.com\n");
+    client.print("Connection: close\n");
+    client.print("X-THINGSPEAKAPIKEY: " + writeApiKey + "\n");
+    client.print("Content-Type: application/x-www-form-urlencoded\n");
+    client.print("Content-Length: ");
+    client.print(postStr.length());
+    client.print("\n\n");
+    client.print(postStr);
+    delay(1000);
+    Serial.println("Temperature uploaded");
+    Serial.print("Wait 5 seconds for next upload");
+    int count = myPeriodic;
+    while(count--){
+      Serial.print(".");
+      delay(1000);
+    }
+    Serial.println();
+  }else{
+    Serial.println("Upload failed");
+  }
+  sent++;
+  client.stop();
+}
+
 void releaseMist(){
   Serial.println("Starting mist release sequence...");
-  int endCount = 0;
-  while(endCount < 3){
-    digitalWrite(outPin, 0);
-    delay(5000);
-    digitalWrite(outPin, 1);
-    delay(10000);
-    endCount++;
-  }
+//  int endCount = 0;
+//  while(endCount < 3){
+//    digitalWrite(outPin, 0);
+//    delay(5000);
+//    digitalWrite(outPin, 1);
+//    delay(10000);
+//    endCount++;
+//  }
+  delay(5000);
   Serial.println("Mist release sequence has ended");
 }
