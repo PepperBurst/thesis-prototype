@@ -7,6 +7,8 @@
 #define dhtPin D1
 #define pirPin D2
 #define outPin D3
+#define solPin D4
+#define pmpPin D5
 #define myPeriodic 5
 
 //Read APIKEY for Channel 1 = EX1DVX903H75LZCS
@@ -20,9 +22,9 @@
 //TalkBack ID for Channel 1 = 32023;
 //TalkBack APIKEY for Channel 1 = WGTNUEUDPAYLS3PN
 //Talkback ID for channel 2 = 32823
-//TalkBack APIKEY for Channel 2  = S11XC4U836TQ0261
+//TalkBack APIKEY for Channel 2  = KGUQTLB8771TD7CV
 //Talkback ID for channel 3 = 32824
-//TalkBack APIKEY for Channel 3  = KGUQTLB8771TD7CV
+//TalkBack APIKEY for Channel 3  = S11XC4U836TQ0261
 //Talkback ID for channel 4 = 32825
 //TalkBack APIKEY for Channel 4  =  T7X7SYQN5K6Z9KK5
 
@@ -50,7 +52,9 @@ float temperature = 0;
 float relativeHumidity = 0;
 float heatIndexTreshold = 0;
 float relativeHumidityTreshold = 0;
-
+int defaultMistDuration = 5000;
+int lastMainReleaseCount = 60;
+int mainReleaseMax = 60;
 
 DHTesp dht;
 ESP8266WiFiMulti wifiMulti;
@@ -63,7 +67,11 @@ void setup() {
   dht.setup(dhtPin, DHTesp::DHT11); // Connect DHT sensor to GPIO 5
   pinMode(pirPin, INPUT);
   pinMode(outPin, OUTPUT);
+  pinMode(solPin, OUTPUT);
+  pinMode(pmpPin, OUTPUT);
   digitalWrite(outPin, 1);
+  digitalWrite(solPin, 1);
+  digitalWrite(pmpPin, 1);
   connectWifi();
   Serial.println("Swarm of Automatic Misting Systems with Android Application");
   Serial.println(moduleName);
@@ -77,19 +85,25 @@ void loop() {
   while(wifiMulti.run() == WL_CONNECTED){
 //    Serial.println("Start Loop");
     int loop1Count = 0;
-    if(loop1Count > 300000){
-      getReadings();
-      uploadReadings(heatIndex, temperature, relativeHumidity);
-    }
-    if(heatIndex >= heatIndexTreshold && relativeHumidity <= relativeHumidityTreshold){
+//    if(loop1Count > 5 ){
+//      getReadings();
+//      uploadReadings(heatIndex, temperature, relativeHumidity);
+//      loop1Count = 0;
+//    }
+    getReadings();
+    uploadReadings(heatIndex, temperature, relativeHumidity);
+    if(heatIndex >= heatIndexTreshold && relativeHumidity <= relativeHumidityTreshold && mainReleaseMax >= 60){
       //do mist shet
       //swarm activation
+      releaseSequence(defaultMistDuration, true);
       sendSwarmSignal(moduleNumber);
+      lastMainReleaseCount = 0;
     }
     getTresholds();
     getTalkbackCommand();
     delay(1000);
     loop1Count++;
+    lastMainReleaseCount++;
 //    Serial.println("End Loop");
   }
   connectWifi();
@@ -277,6 +291,7 @@ void getTalkbackCommand(){
 
 void connectWifi(){
   Serial.print("Connecting...");
+  wifiMulti.addAP("HEI Classroom", "mikeymagone");
   wifiMulti.addAP("PASCUAPARASAMASA", "lalalalala");
   wifiMulti.addAP("PLDTHOMEDSL17A6F", "PLDTWIFI17A67");
   wifiMulti.addAP("PLDT2GRamos", "2243taradale");
@@ -407,8 +422,9 @@ void sendHeatIndex(float heatInd){
   client.stop();
 }
 void sendSwarmSignal(int module){
-  String sourceSignal = "MIST_RELEASE_";
-  sourceSignal += String(module);
+//  String sourceSignal = "MIST_RELEASE_";
+//  sourceSignal += String(module);
+  String sourceSignal = "SWARM_ON";
   WiFiClient client;
   Serial.print("Swarm Signal Source:\t");
   Serial.println(module);
@@ -445,32 +461,66 @@ void sendSwarmSignal(int module){
 }
 
 void releaseMist(int module){
-  Serial.println("Starting mist release sequence...");
+  //Module 3
   switch(module){
     case 1:
       Serial.println("Source activation module 1");
+      releaseSequence(5000 / 4, false);
       break;
     case 2:
       Serial.println("Source activation module 2");
+      releaseSequence(5000 / 4, false);
       break;
     case 3:
       Serial.println("Source activation module 3");
+      releaseSequence(5000 / 4, false);
       break;
     case 4:
       Serial.println("Source activation module 4");
+      releaseSequence(5000 / 4, false);
       break;
     default:
       Serial.println("Default flow");
       break;
   }
-//  int endCount = 0;
-//  while(endCount < 3){
-//    digitalWrite(outPin, 0);
-//    delay(5000);
-//    digitalWrite(outPin, 1);
-//    delay(10000);
-//    endCount++;
-//  }
   delay(5000);
   Serial.println("Mist release sequence has ended");
+}
+
+void releaseSequence(int duration, bool mainSequence){
+  //Main release is 5 seconds
+  if(mainSequence){
+    Serial.println("Starting main mist sequence...");    
+  }else{
+    Serial.println("Starting mist assist sequence...");
+  }
+  digitalWrite(solPin, 0);
+  digitalWrite(pmpPin, 1);
+  delay(10000);
+  digitalWrite(solPin, 1);
+  delay(5000);
+  digitalWrite(solPin, 0);
+  delay(duration);
+  digitalWrite(pmpPin, 1);
+  digitalWrite(solPin, 1);
+}
+
+void testOutput(){
+  Serial.println("Starting sequence...");
+  Serial.println("Expected LED Seequence");
+  //pump - solenoid
+  Serial.println("O -");
+  Serial.println("- O");
+  Serial.println("O O");
+  digitalWrite(solPin, 0);
+  digitalWrite(pmpPin, 1);
+  delay(5000);
+  digitalWrite(solPin, 1);
+  digitalWrite(pmpPin, 0);
+  delay(5000);
+  digitalWrite(solPin, 0);
+  digitalWrite(pmpPin, 0);
+  delay(5000);
+  digitalWrite(solPin, 1);
+  digitalWrite(pmpPin, 1);
 }
