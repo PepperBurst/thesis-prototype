@@ -11,12 +11,12 @@
 #define comPin D5
 #define myPeriodic 5
 
-String readApiKey = "EX1DVX903H75LZCS";   //Channel 1;
-String writeApiKey = "459JH64HVXZMSZQJ";  //Channel 1;
-String tbID = "32023";                    //Channel 1;
-String tbApiKey = "WGTNUEUDPAYLS3PN";     //Channel 1;
-String moduleName = "Module 1";           //Channel 1;
-int moduleNumber = 1;                     //Channel 1;
+//String readApiKey = "EX1DVX903H75LZCS";   //Channel 1;
+//String writeApiKey = "459JH64HVXZMSZQJ";  //Channel 1;
+//String tbID = "32023";                    //Channel 1;
+//String tbApiKey = "WGTNUEUDPAYLS3PN";     //Channel 1;
+//String moduleName = "Module 1";           //Channel 1;
+//int moduleNumber = 1;                     //Channel 1;
 //String readApiKey = "SR26KL05EWR7E2YZ";   //Channel 2;
 //String writeApiKey = "N4CZSPBXEJF4U16D";  //Channel 2;
 //String tbID = "32823";                    //Channel 2;
@@ -29,12 +29,12 @@ int moduleNumber = 1;                     //Channel 1;
 //String tbApiKey = "S11XC4U836TQ0261";     //Channel 3;
 //String moduleName = "Module 3";           //Channel 3;
 //int moduleNumber = 3;                     //Channel 3;
-//String readApiKey = "KDIUJMWUGI9QPHPJ";   //Channel 4;
-//String writeApiKey = "S2E20R36YWWDAMMC";  //Channel 4;
-//String tbID = "32825";                    //Channel 4;
-//String tbApiKey = "T7X7SYQN5K6Z9KK5";     //Channel 4;
-//String moduleName = "Module 4";           //Channel 4;
-//int moduleNumber = 4;                     //Channel 4;
+String readApiKey = "KDIUJMWUGI9QPHPJ";   //Channel 4;
+String writeApiKey = "S2E20R36YWWDAMMC";  //Channel 4;
+String tbID = "32825";                    //Channel 4;
+String tbApiKey = "T7X7SYQN5K6Z9KK5";     //Channel 4;
+String moduleName = "Module 4";           //Channel 4;
+int moduleNumber = 4;                     //Channel 4;
 const char* server = "api.thingspeak.com";
 int sent = 0;
 bool delayForMist = false;
@@ -80,8 +80,8 @@ void setup() {
   connectWifi();
   Serial.println("Swarm of Automatic Misting Systems with Android Application");
   Serial.println(moduleName);
-  Serial.print("Posting Interval:\t");
-  Serial.println(postingInterval);
+//  Serial.print("Posting Interval:\t");
+//  Serial.println(postingInterval);
   getTresholds();
   getTalkbackCommand();
 }
@@ -94,7 +94,7 @@ void loop() {
     if(dhtReadLoop >= maxReadDHT){
       Serial.println("Acquiring Readings...");
       getReadings();
-      uploadReadings(heatIndex, temperature, relativeHumidity);
+      uploadReadings(heatIndex, temperature, relativeHumidity, "SWARM_OFF");
       dhtReadLoop = 0;
     }
     dhtReadLoop++;
@@ -335,157 +335,14 @@ void connectWifi(){
   Serial.println();
 }
 
-void uploadReadings(float hi, float temp, float rh){
-  sendHeatIndex(hi);
-  sendTemp(temp);
-  sendRH(rh);
+void uploadReadings(float hi, float temp, float rh, String ss){
+  sendAllReadings(hi, temp, rh, ss);
 }
 
-void sendTemp(float temp){
-  WiFiClient client;
-  Serial.print("Temperature:\t");
-  Serial.println(temp, 2);
-  Serial.println("Uploading temperature reading...");
-  if(client.connect(server, 80)){
-    Serial.println("Wifi Client connected");
-    String postStr = writeApiKey;
-    postStr += fieldTemperature;
-    postStr += String(temp);
-//    postStr += "\r\n\r\n";
-    postStr += "";
-    client.print("POST /update HTTP/1.1\n");
-    client.print("HOST: api.thingspeak.com\n");
-    client.print("Connection: close\n");
-    client.print("X-THINGSPEAKAPIKEY: " + writeApiKey + "\n");
-    client.print("Content-Type: application/x-www-form-urlencoded\n");
-    client.print("Content-Length: ");
-    client.print(postStr.length());
-    client.print("\n\n");
-    client.print(postStr);
-    delay(1000);
-    Serial.println("Temperature uploaded");
-    Serial.print("Wait 5 seconds for next upload");
-    int count = myPeriodic;
-    while(count--){
-      Serial.print(".");
-      delay(1000);
-    }
-    Serial.println();
-  }else{
-    Serial.println("Upload failed");
-  }
-  sent++;
-  client.stop();
-}
-
-void sendRH(float rh){
-  WiFiClient client;
-  Serial.print("Relative Humidity:\t");
-  Serial.println(rh, 2);
-  Serial.println("Uploading Relative Humidity...");
-  if(client.connect(server, 80)){
-    Serial.println("Wifi Client connected");
-    String postStr = writeApiKey;
-    postStr += fieldRelativeHumidity;
-    postStr += String(rh);
-//    postStr += "\r\n\r\n";
-    client.print("POST /update HTTP/1.1\n");
-    client.print("HOST: api.thingspeak.com\n");
-    client.print("Connection: close\n");
-    client.print("X-THINGSPEAKAPIKEY: " + writeApiKey + "\n");
-    client.print("Content-Type: application/x-www-form-urlencoded\n");
-    client.print("Content-Length: ");
-    client.print(postStr.length());
-    client.print("\n\n");
-    client.print(postStr);
-    delay(1000);
-    Serial.println("Relative Humidity uploaded");
-    Serial.print("Wait 5 seconds for next upload");
-    int count = myPeriodic;
-    while(count--){
-      Serial.print(".");
-      delay(1000);
-    }
-    Serial.println();
-  }else{
-    Serial.println("Upload failed");
-  }
-  sent++;
-  client.stop();
-}
-
-void sendHeatIndex(float heatInd){
-  WiFiClient client;
-  Serial.print("Heat Index:\t");
-  Serial.println(heatInd, 2);
-  Serial.println("Uploading Heat index...");
-  if(client.connect(server, 80)){
-    Serial.println("Wifi Client connected");
-    String postStr = writeApiKey;
-    postStr += fieldHeatIndex;
-    postStr += String(heatInd);
-//    postStr += "\r\n\r\n";
-    client.print("POST /update HTTP/1.1\n");
-    client.print("HOST: api.thingspeak.com\n");
-    client.print("Connection: close\n");
-    client.print("X-THINGSPEAKAPIKEY: " + writeApiKey + "\n");
-    client.print("Content-Type: application/x-www-form-urlencoded\n");
-    client.print("Content-Length: ");
-    client.print(postStr.length());
-    client.print("\n\n");
-    client.print(postStr);
-    delay(1000);
-    Serial.println("Heat index uploaded");
-    Serial.print("Wait 5 seconds for next upload");
-    int count = myPeriodic;
-    while(count--){
-      Serial.print(".");
-      delay(1000);
-    }
-    Serial.println();
-  }else{
-    Serial.println("Upload failed");
-  }
-  sent++;
-  client.stop();
-}
-void sendSwarmSignal(int module){
-//  String sourceSignal = "MIST_RELEASE_";
-//  sourceSignal += String(module);
-  String sourceSignal = "SWARM_ON";
-  WiFiClient client;
+void sendSwarmSignal(int moduleNumber){
   Serial.print("Swarm Signal Source:\t");
   Serial.println(moduleNumber);
-  Serial.println("Uploading swarm signal...");
-  if(client.connect(server, 80)){
-    Serial.println("Wifi Client connected");
-    String postStr = writeApiKey;
-    postStr += fieldSwarmSignal;
-    postStr += sourceSignal;
-//    postStr += "\r\n\r\n";
-    client.print("POST /update HTTP/1.1\n");
-    client.print("HOST: api.thingspeak.com\n");
-    client.print("Connection: close\n");
-    client.print("X-THINGSPEAKAPIKEY: " + writeApiKey + "\n");
-    client.print("Content-Type: application/x-www-form-urlencoded\n");
-    client.print("Content-Length: ");
-    client.print(postStr.length());
-    client.print("\n\n");
-    client.print(postStr);
-    delay(1000);
-    Serial.println("Swarm signal uploaded");
-    Serial.print("Wait 5 seconds for next upload");
-    int count = myPeriodic;
-    while(count--){
-      Serial.print(".");
-      delay(1000);
-    }
-    Serial.println();
-  }else{
-    Serial.println("Upload failed");
-  }
-  sent++;
-  client.stop();
+  uploadReadings(heatIndex, temperature, relativeHumidity, "SWARM_ON");
 }
 
 void releaseMist(int module){
@@ -551,4 +408,53 @@ void testOutput(){
   delay(5000);
   digitalWrite(solPin, 1);
   digitalWrite(pmpPin, 1);
+}
+
+void sendAllReadings(float local_heatIndex, float local_temperature, float local_relativeHumidity, String local_swarmTrigger){
+  WiFiClient client;
+  Serial.print("Heat Index:\t");
+  Serial.println(local_heatIndex, 2);
+  Serial.print("Temperature:\t");
+  Serial.println(local_temperature, 2);
+  Serial.print("Relative Humidity:\t");
+  Serial.println(local_relativeHumidity, 2);
+  Serial.println("Uploading all readings...");
+  if(client.connect(server, 80)){
+    Serial.println("Wifi Client connected");
+    String postStr = writeApiKey;
+    postStr += fieldHeatIndex;
+    postStr += String(local_heatIndex);
+    postStr += fieldTemperature;
+    postStr += String(local_temperature);
+    postStr += fieldRelativeHumidity;
+    postStr += String(local_relativeHumidity);
+    postStr += fieldHeatIndexTreshold;
+    postStr += String(heatIndexTreshold);
+    postStr += fieldRelativeHumidityTreshold;
+    postStr += String(relativeHumidityTreshold);
+    postStr += fieldSwarmSignal;
+    postStr += String(local_swarmTrigger);
+    client.print("POST /update HTTP/1.1\n");
+    client.print("HOST: api.thingspeak.com\n");
+    client.print("Connection: close\n");
+    client.print("X-THINGSPEAKAPIKEY: " + writeApiKey + "\n");
+    client.print("Content-Type: application/x-www-form-urlencoded\n");
+    client.print("Content-Length: ");
+    client.print(postStr.length());
+    client.print("\n\n");
+    client.print(postStr);
+    delay(1000);
+    Serial.println("Readings Uploaded");
+    Serial.print("Wait 5 seconds for next upload");
+    int count = myPeriodic;
+    while(count--){
+      Serial.print(".");
+      delay(1000);
+    }
+    Serial.println();
+  }else{
+    Serial.println("Upload failed");
+  }
+  sent++;
+  client.stop();
 }
