@@ -6,34 +6,36 @@
 
 #define dhtPin D1
 #define pirPin D2
-#define outPin D3
-#define solPin D4
-#define pmpPin D5
+#define solPin D3
+#define pmpPin D4
+#define comPin D5
 #define myPeriodic 5
 
-//Read APIKEY for Channel 1 = EX1DVX903H75LZCS
-//Write APIKEY for Channel 1 = 459JH64HVXZMSZQJ
-//Read APIKEY for Channel 2 = SR26KL05EWR7E2YZ
-//Write APIKEY for Channel 2 = N4CZSPBXEJF4U16D
-//Read APIKEY for Channel 3 = 0YG3YFK75U80P940
-//Write APIKEY for Channel 3 = XOIG3YFOHR4OK8MW
-//Read APIKEY for Channel 4 = KDIUJMWUGI9QPHPJ
-//Write APIKEY for Channel 4 = S2E20R36YWWDAMMC
-//TalkBack ID for Channel 1 = 32023;
-//TalkBack APIKEY for Channel 1 = WGTNUEUDPAYLS3PN
-//Talkback ID for channel 2 = 32823
-//TalkBack APIKEY for Channel 2  = KGUQTLB8771TD7CV
-//Talkback ID for channel 3 = 32824
-//TalkBack APIKEY for Channel 3  = S11XC4U836TQ0261
-//Talkback ID for channel 4 = 32825
-//TalkBack APIKEY for Channel 4  =  T7X7SYQN5K6Z9KK5
-
-
+String readApiKey = "EX1DVX903H75LZCS";   //Channel 1;
+String writeApiKey = "459JH64HVXZMSZQJ";  //Channel 1;
+String tbID = "32023";                    //Channel 1;
+String tbApiKey = "WGTNUEUDPAYLS3PN";     //Channel 1;
+String moduleName = "Module 1";           //Channel 1;
+int moduleNumber = 1;                     //Channel 1;
+//String readApiKey = "SR26KL05EWR7E2YZ";   //Channel 2;
+//String writeApiKey = "N4CZSPBXEJF4U16D";  //Channel 2;
+//String tbID = "32823";                    //Channel 2;
+//String tbApiKey = "KGUQTLB8771TD7CV";     //Channel 2;
+//String moduleName = "Module 2";           //Channel 2;
+//int moduleNumber = 2;                     //Channel 2;
+//String readApiKey = "0YG3YFK75U80P940";   //Channel 3;
+//String writeApiKey = "XOIG3YFOHR4OK8MW";  //Channel 3;
+//String tbID = "32824";                    //Channel 3;
+//String tbApiKey = "S11XC4U836TQ0261";     //Channel 3;
+//String moduleName = "Module 3";           //Channel 3;
+//int moduleNumber = 3;                     //Channel 3;
+//String readApiKey = "KDIUJMWUGI9QPHPJ";   //Channel 4;
+//String writeApiKey = "S2E20R36YWWDAMMC";  //Channel 4;
+//String tbID = "32825";                    //Channel 4;
+//String tbApiKey = "T7X7SYQN5K6Z9KK5";     //Channel 4;
+//String moduleName = "Module 4";           //Channel 4;
+//int moduleNumber = 4;                     //Channel 4;
 const char* server = "api.thingspeak.com";
-String writeApiKey = "XOIG3YFOHR4OK8MW"; // set Write API Key
-String readApiKey = "0YG3YFK75U80P940";
-String tbApiKey = "S11XC4U836TQ0261";
-String tbID = "32824";
 int sent = 0;
 bool delayForMist = false;
 int countDelay = 0;
@@ -43,8 +45,6 @@ String fieldRelativeHumidity = "&field3=";
 String fieldHeatIndexTreshold = "&field4=";
 String fieldRelativeHumidityTreshold = "&field5=";
 String fieldSwarmSignal = "&field6=";
-String moduleName = "Module 3";     //set Module #
-int moduleNumber = 3;
 const unsigned long postingInterval = 200000;
 long lastUpdateTime = 0;
 float heatIndex = 0;
@@ -53,8 +53,13 @@ float relativeHumidity = 0;
 float heatIndexTreshold = 0;
 float relativeHumidityTreshold = 0;
 int defaultMistDuration = 5000;
-int lastMainReleaseCount = 60;
-int mainReleaseMax = 60;
+int lastMainReleaseCount = 10;
+int mainReleaseMax = 10;
+int dhtReadLoop = 5;
+int maxReadDHT = 5;
+int motionReadLoop = 10;
+int maxReadPIR = 10;
+bool recordedMotion = true;
 
 DHTesp dht;
 ESP8266WiFiMulti wifiMulti;
@@ -66,10 +71,10 @@ void setup() {
   Serial.println(thisBoard);
   dht.setup(dhtPin, DHTesp::DHT11); // Connect DHT sensor to GPIO 5
   pinMode(pirPin, INPUT);
-  pinMode(outPin, OUTPUT);
+  pinMode(comPin, OUTPUT);
   pinMode(solPin, OUTPUT);
   pinMode(pmpPin, OUTPUT);
-  digitalWrite(outPin, 1);
+  digitalWrite(comPin, 1);
   digitalWrite(solPin, 1);
   digitalWrite(pmpPin, 1);
   connectWifi();
@@ -83,28 +88,46 @@ void setup() {
 
 void loop() {
   while(wifiMulti.run() == WL_CONNECTED){
-//    Serial.println("Start Loop");
-    int loop1Count = 0;
-//    if(loop1Count > 5 ){
-//      getReadings();
-//      uploadReadings(heatIndex, temperature, relativeHumidity);
-//      loop1Count = 0;
-//    }
-    getReadings();
-    uploadReadings(heatIndex, temperature, relativeHumidity);
-    if(heatIndex >= heatIndexTreshold && relativeHumidity <= relativeHumidityTreshold && mainReleaseMax >= 60){
-      //do mist shet
-      //swarm activation
-      releaseSequence(defaultMistDuration, true);
-      sendSwarmSignal(moduleNumber);
-      lastMainReleaseCount = 0;
-    }
     getTresholds();
     getTalkbackCommand();
-    delay(1000);
-    loop1Count++;
+//    DHT Reading loop
+    if(dhtReadLoop >= maxReadDHT){
+      Serial.println("Acquiring Readings...");
+      getReadings();
+      uploadReadings(heatIndex, temperature, relativeHumidity);
+      dhtReadLoop = 0;
+    }
+    dhtReadLoop++;
+//    PIR Reading Loop
+//    If PIR has read motion in the past timeframe
+//      Motion is recorded as true
+    if(motionReadLoop >= maxReadPIR || !recordedMotion){
+      recordedMotion = getMotion();
+      motionReadLoop = 0;
+    }
+    motionReadLoop++;
+//    Activation within thresholds
+//    Will activate after a certain amount after
+//    Releasing Mist
+    if(heatIndex >= heatIndexTreshold && relativeHumidity <= relativeHumidityTreshold && lastMainReleaseCount >= mainReleaseMax){
+      Serial.println("Checking for recorded motion...");
+      if(recordedMotion){
+        Serial.println("Recorded motion detected");
+        releaseSequence(defaultMistDuration, true);
+        sendSwarmSignal(moduleNumber);
+        lastMainReleaseCount = 0;
+      }else{
+        Serial.println("No Recorded motion detected");
+      }
+    }
     lastMainReleaseCount++;
-//    Serial.println("End Loop");
+    delay(1000);
+    Serial.print("DHT Loop Count:\t");
+    Serial.println(dhtReadLoop);
+    Serial.print("PIR Loop Count:\t");
+    Serial.println(motionReadLoop);
+    Serial.print("Mist Loop Count:\t");
+    Serial.println(lastMainReleaseCount);
   }
   connectWifi();
 }
@@ -126,7 +149,7 @@ bool getMotion(){
   int falseCount = 0;
   int trueCount = 0;
   Serial.print("Detect count:\t");
-  while((trueCount + falseCount) <= 300){
+  while((trueCount + falseCount) <= 40){
     motDet = digitalRead(pirPin);
     if(motDet==1){
       trueCount++;
@@ -135,10 +158,15 @@ bool getMotion(){
       falseCount++;
       Serial.print("X");
     }
-    delay(100);
+    delay(500);
   }
   Serial.println();
-  motTrue = trueCount > 50;
+  motTrue = trueCount > 10;
+  if(motTrue){
+    Serial.println("Motion Detected");
+  }else{
+    Serial.println("No Motion Detected");
+  }
   return motTrue;
 }
 
@@ -273,7 +301,7 @@ void getTalkbackCommand(){
     while(client.available()){
       all_data += client.readStringUntil('\n');
     }
-    Serial.println(all_data);
+//    Serial.println(all_data);
     if(all_data=="MIST_RELEASE_1"){
       releaseMist(1);
     }else if(all_data=="MIST_RELEASE_2"){
@@ -427,7 +455,7 @@ void sendSwarmSignal(int module){
   String sourceSignal = "SWARM_ON";
   WiFiClient client;
   Serial.print("Swarm Signal Source:\t");
-  Serial.println(module);
+  Serial.println(moduleNumber);
   Serial.println("Uploading swarm signal...");
   if(client.connect(server, 80)){
     Serial.println("Wifi Client connected");
