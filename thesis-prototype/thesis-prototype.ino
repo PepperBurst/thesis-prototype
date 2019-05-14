@@ -23,18 +23,18 @@
 //String tbApiKey = "KGUQTLB8771TD7CV";     //Channel 2;
 //String moduleName = "Module 2";           //Channel 2;
 //int moduleNumber = 2;                     //Channel 2;
-//String readApiKey = "0YG3YFK75U80P940";   //Channel 3;
-//String writeApiKey = "XOIG3YFOHR4OK8MW";  //Channel 3;
-//String tbID = "32824";                    //Channel 3;
-//String tbApiKey = "S11XC4U836TQ0261";     //Channel 3;
-//String moduleName = "Module 3";           //Channel 3;
-//int moduleNumber = 3;                     //Channel 3;
-String readApiKey = "KDIUJMWUGI9QPHPJ";   //Channel 4;
-String writeApiKey = "S2E20R36YWWDAMMC";  //Channel 4;
-String tbID = "32825";                    //Channel 4;
-String tbApiKey = "T7X7SYQN5K6Z9KK5";     //Channel 4;
-String moduleName = "Module 4";           //Channel 4;
-int moduleNumber = 4;                     //Channel 4;
+String readApiKey = "0YG3YFK75U80P940";   //Channel 3;
+String writeApiKey = "XOIG3YFOHR4OK8MW";  //Channel 3;
+String tbID = "32824";                    //Channel 3;
+String tbApiKey = "S11XC4U836TQ0261";     //Channel 3;
+String moduleName = "Module 3";           //Channel 3;
+int moduleNumber = 3;                     //Channel 3;
+//String readApiKey = "KDIUJMWUGI9QPHPJ";   //Channel 4;
+//String writeApiKey = "S2E20R36YWWDAMMC";  //Channel 4;
+//String tbID = "32825";                    //Channel 4;
+//String tbApiKey = "T7X7SYQN5K6Z9KK5";     //Channel 4;
+//String moduleName = "Module 4";           //Channel 4;
+//int moduleNumber = 4;                     //Channel 4;
 const char* server = "api.thingspeak.com";
 int sent = 0;
 bool delayForMist = false;
@@ -45,6 +45,7 @@ String fieldRelativeHumidity = "&field3=";
 String fieldHeatIndexTreshold = "&field4=";
 String fieldRelativeHumidityTreshold = "&field5=";
 String fieldSwarmSignal = "&field6=";
+String fieldMotion = "&field7=";
 const unsigned long postingInterval = 200000;
 long lastUpdateTime = 0;
 float heatIndex = 0;
@@ -60,6 +61,7 @@ int maxReadDHT = 5;
 int motionReadLoop = 10;
 int maxReadPIR = 10;
 bool recordedMotion = true;
+String motionUpload = "FALSE";
 
 DHTesp dht;
 ESP8266WiFiMulti wifiMulti;
@@ -94,7 +96,7 @@ void loop() {
     if(dhtReadLoop >= maxReadDHT){
       Serial.println("Acquiring Readings...");
       getReadings();
-      uploadReadings(heatIndex, temperature, relativeHumidity, "SWARM_OFF");
+      uploadReadings(heatIndex, temperature, relativeHumidity, "SWARM_OFF", motionUpload);
       dhtReadLoop = 0;
     }
     dhtReadLoop++;
@@ -167,6 +169,12 @@ bool getMotion(){
   }else{
     Serial.println("No Motion Detected");
   }
+  if(motTrue){
+    motionUpload = "TRUE";
+  }else{
+    motionUpload = "FALSE";
+  }
+   
   return motTrue;
 }
 
@@ -278,11 +286,11 @@ void getTalkbackCommand(){
   url += tbID;
   url += "/commands/execute?api_key=";
   url += tbApiKey;
+    client.print("Connection: close\r\n\r\n");
   if(client.connect(server, 80)){
     client.print(String("GET "));
     client.print(url + " HTTP/1.1\r\n");
     client.print("HOST: api.thingspeak.com\r\n");
-    client.print("Connection: close\r\n\r\n");
     delay(1000);
     char status[32] = {0};
     client.readBytesUntil('\r', status, sizeof(status));
@@ -335,14 +343,14 @@ void connectWifi(){
   Serial.println();
 }
 
-void uploadReadings(float hi, float temp, float rh, String ss){
-  sendAllReadings(hi, temp, rh, ss);
+void uploadReadings(float hi, float temp, float rh, String ss, String mt){
+  sendAllReadings(hi, temp, rh, ss, mt);
 }
 
 void sendSwarmSignal(int moduleNumber){
   Serial.print("Swarm Signal Source:\t");
   Serial.println(moduleNumber);
-  uploadReadings(heatIndex, temperature, relativeHumidity, "SWARM_ON");
+  uploadReadings(heatIndex, temperature, relativeHumidity, "SWARM_ON", motionUpload);
 }
 
 void releaseMist(int module){
@@ -410,7 +418,7 @@ void testOutput(){
   digitalWrite(pmpPin, 1);
 }
 
-void sendAllReadings(float local_heatIndex, float local_temperature, float local_relativeHumidity, String local_swarmTrigger){
+void sendAllReadings(float local_heatIndex, float local_temperature, float local_relativeHumidity, String local_swarmTrigger, String local_motion){
   WiFiClient client;
   Serial.print("Heat Index:\t");
   Serial.println(local_heatIndex, 2);
@@ -434,6 +442,8 @@ void sendAllReadings(float local_heatIndex, float local_temperature, float local
     postStr += String(relativeHumidityTreshold);
     postStr += fieldSwarmSignal;
     postStr += String(local_swarmTrigger);
+    postStr += fieldMotion;
+    postStr += String(local_motion);
     client.print("POST /update HTTP/1.1\n");
     client.print("HOST: api.thingspeak.com\n");
     client.print("Connection: close\n");
