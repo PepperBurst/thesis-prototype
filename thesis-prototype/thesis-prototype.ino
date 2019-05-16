@@ -11,24 +11,24 @@
 #define comPin D5
 #define myPeriodic 5
 
-//String readApiKey = "EX1DVX903H75LZCS";   //Channel 1;
-//String writeApiKey = "459JH64HVXZMSZQJ";  //Channel 1;
-//String tbID = "32023";                    //Channel 1;
-//String tbApiKey = "WGTNUEUDPAYLS3PN";     //Channel 1;
-//String moduleName = "Module 1";           //Channel 1;
-//int moduleNumber = 1;                     //Channel 1;
+String readApiKey = "EX1DVX903H75LZCS";   //Channel 1;
+String writeApiKey = "459JH64HVXZMSZQJ";  //Channel 1;
+String tbID = "32023";                    //Channel 1;
+String tbApiKey = "WGTNUEUDPAYLS3PN";     //Channel 1;
+String moduleName = "Module 1";           //Channel 1;
+int moduleNumber = 1;                     //Channel 1;
 //String readApiKey = "SR26KL05EWR7E2YZ";   //Channel 2;
 //String writeApiKey = "N4CZSPBXEJF4U16D";  //Channel 2;
 //String tbID = "32823";                    //Channel 2;
 //String tbApiKey = "KGUQTLB8771TD7CV";     //Channel 2;
 //String moduleName = "Module 2";           //Channel 2;
 //int moduleNumber = 2;                     //Channel 2;
-String readApiKey = "0YG3YFK75U80P940";   //Channel 3;
-String writeApiKey = "XOIG3YFOHR4OK8MW";  //Channel 3;
-String tbID = "32824";                    //Channel 3;
-String tbApiKey = "S11XC4U836TQ0261";     //Channel 3;
-String moduleName = "Module 3";           //Channel 3;
-int moduleNumber = 3;                     //Channel 3;
+//String readApiKey = "0YG3YFK75U80P940";   //Channel 3;
+//String writeApiKey = "XOIG3YFOHR4OK8MW";  //Channel 3;
+//String tbID = "32824";                    //Channel 3;
+//String tbApiKey = "S11XC4U836TQ0261";     //Channel 3;
+//String moduleName = "Module 3";           //Channel 3;
+//int moduleNumber = 3;                     //Channel 3;
 //String readApiKey = "KDIUJMWUGI9QPHPJ";   //Channel 4;
 //String writeApiKey = "S2E20R36YWWDAMMC";  //Channel 4;
 //String tbID = "32825";                    //Channel 4;
@@ -84,14 +84,13 @@ void setup() {
   Serial.println(moduleName);
 //  Serial.print("Posting Interval:\t");
 //  Serial.println(postingInterval);
-  getTresholds();
+  getTresholds(); 
   getTalkbackCommand();
+  doPOST();
 }
 
 void loop() {
   while(wifiMulti.run() == WL_CONNECTED){
-    getTresholds();
-    getTalkbackCommand();
 //    DHT Reading loop
     if(dhtReadLoop >= maxReadDHT){
       Serial.println("Acquiring Readings...");
@@ -122,6 +121,9 @@ void loop() {
         Serial.println("No Recorded motion detected");
       }
     }
+//    Update Thresholds and Commands
+    getTresholds();
+    getTalkbackCommand();
     lastMainReleaseCount++;
     delay(1000);
     Serial.print("DHT Loop Count:\t");
@@ -286,11 +288,11 @@ void getTalkbackCommand(){
   url += tbID;
   url += "/commands/execute?api_key=";
   url += tbApiKey;
-    client.print("Connection: close\r\n\r\n");
   if(client.connect(server, 80)){
-    client.print(String("GET "));
+    client.print(String("POST "));
     client.print(url + " HTTP/1.1\r\n");
     client.print("HOST: api.thingspeak.com\r\n");
+    client.print("Connection: close\r\n\r\n");
     delay(1000);
     char status[32] = {0};
     client.readBytesUntil('\r', status, sizeof(status));
@@ -327,8 +329,8 @@ void getTalkbackCommand(){
 
 void connectWifi(){
   Serial.print("Connecting...");
-  wifiMulti.addAP("HEI Classroom", "mikeymagone");
   wifiMulti.addAP("PASCUAPARASAMASA", "lalalalala");
+  wifiMulti.addAP("HEI Classroom", "mikeymagone");
   wifiMulti.addAP("PLDTHOMEDSL17A6F", "PLDTWIFI17A67");
   wifiMulti.addAP("PLDT2GRamos", "2243taradale");
   while (wifiMulti.run() != WL_CONNECTED) { // Wait for the Wi-Fi to connect: scan for Wi-Fi networks, and connect to the strongest of the networks above
@@ -388,7 +390,7 @@ void releaseSequence(int duration, bool mainSequence){
     Serial.println("Starting mist assist sequence...");
   }
   digitalWrite(solPin, 0);
-  digitalWrite(pmpPin, 1);
+  digitalWrite(pmpPin, 0);
   delay(10000);
   digitalWrite(solPin, 1);
   delay(5000);
@@ -467,4 +469,15 @@ void sendAllReadings(float local_heatIndex, float local_temperature, float local
   }
   sent++;
   client.stop();
+}
+
+void doPOST(){
+  Serial.println("Initializing Power On Self Test");
+  digitalWrite(solPin, 1);
+  digitalWrite(pmpPin, 1);
+  delay(1000);
+  digitalWrite(solPin, 0);
+  digitalWrite(pmpPin, 0);
+  delay(10000);
+  Serial.println("POST done");
 }
