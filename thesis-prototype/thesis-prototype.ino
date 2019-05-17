@@ -4,19 +4,24 @@
 #include "DHTesp.h"
 #include <ArduinoJson.h>
 
-#define dhtPin D1
-#define pirPin D2
-#define solPin D3
-#define pmpPin D4
-#define comPin D5
+//#define dhtPin D1
+//#define pirPin D2
+//#define solPin D3
+//#define pmpPin D4
+//#define comPin D5
 #define myPeriodic 5
 
-String readApiKey = "EX1DVX903H75LZCS";   //Channel 1;
-String writeApiKey = "459JH64HVXZMSZQJ";  //Channel 1;
-String tbID = "32023";                    //Channel 1;
-String tbApiKey = "WGTNUEUDPAYLS3PN";     //Channel 1;
-String moduleName = "Module 1";           //Channel 1;
-int moduleNumber = 1;                     //Channel 1;
+const int dhtPin = 5;
+const int pirPin = 4;
+const int solPin = 0;
+const int pmpPin = 2;
+
+//String readApiKey = "EX1DVX903H75LZCS";   //Channel 1;
+//String writeApiKey = "459JH64HVXZMSZQJ";  //Channel 1;
+//String tbID = "32023";                    //Channel 1;
+//String tbApiKey = "WGTNUEUDPAYLS3PN";     //Channel 1;
+//String moduleName = "Module 1";           //Channel 1;
+//int moduleNumber = 1;                     //Channel 1;
 //String readApiKey = "SR26KL05EWR7E2YZ";   //Channel 2;
 //String writeApiKey = "N4CZSPBXEJF4U16D";  //Channel 2;
 //String tbID = "32823";                    //Channel 2;
@@ -29,12 +34,12 @@ int moduleNumber = 1;                     //Channel 1;
 //String tbApiKey = "S11XC4U836TQ0261";     //Channel 3;
 //String moduleName = "Module 3";           //Channel 3;
 //int moduleNumber = 3;                     //Channel 3;
-//String readApiKey = "KDIUJMWUGI9QPHPJ";   //Channel 4;
-//String writeApiKey = "S2E20R36YWWDAMMC";  //Channel 4;
-//String tbID = "32825";                    //Channel 4;
-//String tbApiKey = "T7X7SYQN5K6Z9KK5";     //Channel 4;
-//String moduleName = "Module 4";           //Channel 4;
-//int moduleNumber = 4;                     //Channel 4;
+String readApiKey = "KDIUJMWUGI9QPHPJ";   //Channel 4;
+String writeApiKey = "S2E20R36YWWDAMMC";  //Channel 4;
+String tbID = "32825";                    //Channel 4;
+String tbApiKey = "T7X7SYQN5K6Z9KK5";     //Channel 4;
+String moduleName = "Module 4";           //Channel 4;
+int moduleNumber = 4;                     //Channel 4;
 const char* server = "api.thingspeak.com";
 int sent = 0;
 bool delayForMist = false;
@@ -73,10 +78,10 @@ void setup() {
   Serial.println(thisBoard);
   dht.setup(dhtPin, DHTesp::DHT11); // Connect DHT sensor to GPIO 5
   pinMode(pirPin, INPUT);
-  pinMode(comPin, OUTPUT);
+//  pinMode(comPin, OUTPUT);
   pinMode(solPin, OUTPUT);
   pinMode(pmpPin, OUTPUT);
-  digitalWrite(comPin, 1);
+//  digitalWrite(comPin, 1);
   digitalWrite(solPin, 1);
   digitalWrite(pmpPin, 1);
   connectWifi();
@@ -84,9 +89,10 @@ void setup() {
   Serial.println(moduleName);
 //  Serial.print("Posting Interval:\t");
 //  Serial.println(postingInterval);
-  getTresholds(); 
-  getTalkbackCommand();
   doPOST();
+  getTalkbackCommand();
+  getTresholds(); 
+  
 }
 
 void loop() {
@@ -398,6 +404,7 @@ void releaseSequence(int duration, bool mainSequence){
   delay(duration);
   digitalWrite(pmpPin, 1);
   digitalWrite(solPin, 1);
+  delay(1000);
 }
 
 void testOutput(){
@@ -479,5 +486,7 @@ void doPOST(){
   digitalWrite(solPin, 0);
   digitalWrite(pmpPin, 0);
   delay(10000);
+  digitalWrite(solPin, 1);
+  digitalWrite(pmpPin, 1);
   Serial.println("POST done");
 }
