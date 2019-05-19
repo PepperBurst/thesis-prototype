@@ -16,30 +16,34 @@ const int pirPin = 4;
 const int solPin = 0;
 const int pmpPin = 2;
 
-//String readApiKey = "EX1DVX903H75LZCS";   //Channel 1;
-//String writeApiKey = "459JH64HVXZMSZQJ";  //Channel 1;
-//String tbID = "32023";                    //Channel 1;
-//String tbApiKey = "WGTNUEUDPAYLS3PN";     //Channel 1;
-//String moduleName = "Module 1";           //Channel 1;
-//int moduleNumber = 1;                     //Channel 1;
+String readApiKey = "EX1DVX903H75LZCS";   //Channel 1;
+String writeApiKey = "459JH64HVXZMSZQJ";  //Channel 1;
+String tbID = "32023";                    //Channel 1;
+String tbApiKey = "WGTNUEUDPAYLS3PN";     //Channel 1;
+String moduleName = "Module 1";           //Channel 1;
+int moduleNumber = 1;                     //Channel 1;
+int channelID = 630835;                   //Channel 1;
 //String readApiKey = "SR26KL05EWR7E2YZ";   //Channel 2;
 //String writeApiKey = "N4CZSPBXEJF4U16D";  //Channel 2;
 //String tbID = "32823";                    //Channel 2;
 //String tbApiKey = "KGUQTLB8771TD7CV";     //Channel 2;
 //String moduleName = "Module 2";           //Channel 2;
 //int moduleNumber = 2;                     //Channel 2;
+//int channelID = 649321;                   //Channel 2;
 //String readApiKey = "0YG3YFK75U80P940";   //Channel 3;
 //String writeApiKey = "XOIG3YFOHR4OK8MW";  //Channel 3;
 //String tbID = "32824";                    //Channel 3;
 //String tbApiKey = "S11XC4U836TQ0261";     //Channel 3;
 //String moduleName = "Module 3";           //Channel 3;
 //int moduleNumber = 3;                     //Channel 3;
-String readApiKey = "KDIUJMWUGI9QPHPJ";   //Channel 4;
-String writeApiKey = "S2E20R36YWWDAMMC";  //Channel 4;
-String tbID = "32825";                    //Channel 4;
-String tbApiKey = "T7X7SYQN5K6Z9KK5";     //Channel 4;
-String moduleName = "Module 4";           //Channel 4;
-int moduleNumber = 4;                     //Channel 4;
+//int channelID = 743475;                   //Channel 3;
+//String readApiKey = "KDIUJMWUGI9QPHPJ";   //Channel 4;
+//String writeApiKey = "S2E20R36YWWDAMMC";  //Channel 4;
+//String tbID = "32825";                    //Channel 4;
+//String tbApiKey = "T7X7SYQN5K6Z9KK5";     //Channel 4;
+//String moduleName = "Module 4";           //Channel 4;
+//int moduleNumber = 4;                     //Channel 4;
+//int channelID = 749656;                   //Channel 4;
 const char* server = "api.thingspeak.com";
 int sent = 0;
 bool delayForMist = false;
@@ -51,13 +55,14 @@ String fieldHeatIndexTreshold = "&field4=";
 String fieldRelativeHumidityTreshold = "&field5=";
 String fieldSwarmSignal = "&field6=";
 String fieldMotion = "&field7=";
+String fieldLog = "&field8=";
 const unsigned long postingInterval = 200000;
 long lastUpdateTime = 0;
-float heatIndex = 0;
-float temperature = 0;
-float relativeHumidity = 0;
-float heatIndexTreshold = 0;
-float relativeHumidityTreshold = 0;
+float global_heatIndex = 0;
+float global_temperature = 0;
+float global_relativeHumidity = 0;
+float global_heatIndexTreshold = 0;
+float global_relativeHumidityTreshold = 0;
 int defaultMistDuration = 5000;
 int lastMainReleaseCount = 10;
 int mainReleaseMax = 10;
@@ -66,7 +71,7 @@ int maxReadDHT = 5;
 int motionReadLoop = 10;
 int maxReadPIR = 10;
 bool recordedMotion = true;
-String motionUpload = "FALSE";
+String global_motionUpload = "FALSE";
 
 DHTesp dht;
 ESP8266WiFiMulti wifiMulti;
@@ -85,11 +90,13 @@ void setup() {
   digitalWrite(solPin, 1);
   digitalWrite(pmpPin, 1);
   connectWifi();
+  // logToThingspeak("Module Powered On");
   Serial.println("Swarm of Automatic Misting Systems with Android Application");
   Serial.println(moduleName);
 //  Serial.print("Posting Interval:\t");
 //  Serial.println(postingInterval);
   doPOST();
+  getPastReadings();
   getTalkbackCommand();
   getTresholds(); 
   
@@ -101,7 +108,7 @@ void loop() {
     if(dhtReadLoop >= maxReadDHT){
       Serial.println("Acquiring Readings...");
       getReadings();
-      uploadReadings(heatIndex, temperature, relativeHumidity, "SWARM_OFF", motionUpload);
+      sendAllReadings(global_heatIndex, global_temperature, global_relativeHumidity, "SWARM_OFF", global_motionUpload);
       dhtReadLoop = 0;
     }
     dhtReadLoop++;
@@ -116,7 +123,7 @@ void loop() {
 //    Activation within thresholds
 //    Will activate after a certain amount after
 //    Releasing Mist
-    if(heatIndex >= heatIndexTreshold && relativeHumidity <= relativeHumidityTreshold && lastMainReleaseCount >= mainReleaseMax){
+    if(global_heatIndex >= global_heatIndexTreshold && global_relativeHumidity <= global_relativeHumidityTreshold && lastMainReleaseCount >= mainReleaseMax){
       Serial.println("Checking for recorded motion...");
       if(recordedMotion){
         Serial.println("Recorded motion detected");
@@ -143,23 +150,28 @@ void loop() {
 }
 
 void getReadings(){
-  relativeHumidity = dht.getHumidity();
-  temperature = dht.getTemperature();
+  global_relativeHumidity = dht.getHumidity();
+  global_temperature = dht.getTemperature();
   while(dht.getStatusString()!="OK"){
-    relativeHumidity = dht.getHumidity();
-    temperature = dht.getTemperature();
+    global_relativeHumidity = dht.getHumidity();
+    global_temperature = dht.getTemperature();
   }
-  heatIndex = dht.computeHeatIndex(temperature, relativeHumidity, false);
+  global_heatIndex = dht.computeHeatIndex(global_temperature, global_relativeHumidity, false);
+//  Serial.println("Heat Index:\t" + String(global_heatIndex));
+//  Serial.println("Temperature:\t" + String(global_temperature));
+//  Serial.println("Relative Humidity:\t" + String(global_relativeHumidity));
+  // logToThingspeak("Readings acquired");
 }
 
 bool getMotion(){
-  Serial.println("Detecting motion...");  
+  Serial.println("Detecting motion...");
+  // logToThingspeak("Detecting motion");
   bool motTrue = false;
   int motDet = 0;
   int falseCount = 0;
   int trueCount = 0;
   Serial.print("Detect count:\t");
-  while((trueCount + falseCount) <= 40){
+  while((trueCount + falseCount) <= 60){
     motDet = digitalRead(pirPin);
     if(motDet==1){
       trueCount++;
@@ -171,16 +183,18 @@ bool getMotion(){
     delay(500);
   }
   Serial.println();
-  motTrue = trueCount > 10;
+  motTrue = trueCount > 20;
   if(motTrue){
     Serial.println("Motion Detected");
+    // logToThingspeak("Motion detected");
   }else{
     Serial.println("No Motion Detected");
+    // logToThingspeak("No motion deteced");
   }
   if(motTrue){
-    motionUpload = "TRUE";
+    global_motionUpload = "TRUE";
   }else{
-    motionUpload = "FALSE";
+    global_motionUpload = "FALSE";
   }
    
   return motTrue;
@@ -189,6 +203,7 @@ bool getMotion(){
 void getTresholds(){
   getHITreshold();
   getRHTreshold();
+  // logToThingspeak("Thresholds acquired");
 }
 
 void getHITreshold(){
@@ -223,7 +238,7 @@ void getHITreshold(){
     all_data.trim();
     all_data.remove(all_data.length()-2, 2);
     all_data += "}";
-    Serial.println(all_data);
+    // Serial.println(all_data);
     const char* json = all_data.c_str();
     const size_t capacity = JSON_OBJECT_SIZE(3) + 70;
     DynamicJsonDocument doc(capacity);
@@ -233,9 +248,9 @@ void getHITreshold(){
       Serial.println(error.c_str());
       return;
     }
-    heatIndexTreshold = doc["field4"].as<float>();
+    global_heatIndexTreshold = doc["field4"].as<float>();
     Serial.print("Heat Index Treshold:\t");
-    Serial.println(heatIndexTreshold, 2);
+    Serial.println(global_heatIndexTreshold, 2);
   }
 }
 
@@ -271,7 +286,7 @@ void getRHTreshold(){
     all_data.trim();
     all_data.remove(all_data.length()-2, 2);
     all_data += "}";
-    Serial.println(all_data);
+    // Serial.println(all_data);
     const char* json = all_data.c_str();
     const size_t capacity = JSON_OBJECT_SIZE(3) + 70;
     DynamicJsonDocument doc(capacity);
@@ -281,14 +296,173 @@ void getRHTreshold(){
       Serial.println(error.c_str());
       return;
     }
-    relativeHumidityTreshold = doc["field5"].as<float>();
+    global_relativeHumidityTreshold = doc["field5"].as<float>();
     Serial.print("Relative Humidity Treshold:\t");
-    Serial.println(relativeHumidityTreshold, 2);
+    Serial.println(global_relativeHumidityTreshold, 2);
   }
   client.stop();
 }
 
+void getPastReadings(){
+  getPastHI();
+  getPastTemp();
+  getPastRH();
+//  logToThingspeak("Past readings acquired");
+}
+
+void getPastHI(){
+  WiFiClient client;
+  String url = "/channels/";
+  url += String(channelID);
+  url += "/fields/1/last.json?api_key=";
+  url += readApiKey;
+  if(client.connect(server, 80)){
+    client.print(String("GET "));
+    client.print(url + " HTTP/1.1\r\n");
+    client.print("HOST: api.thingspeak.com\r\n");
+    client.print("Connection: close\r\n\r\n");
+    delay(1000);
+    char status[32] = {0};
+    client.readBytesUntil('\r', status, sizeof(status));
+    if (strcmp(status, "HTTP/1.1 200 OK") != 0) {
+      Serial.print(F("Unexpected response: "));
+      Serial.println(status);
+      return;
+    }
+    char endOfHeaders[] = "\r\n\r\n";
+    if (!client.find(endOfHeaders)) {
+      Serial.println(F("Invalid response"));
+      return;
+    }
+    client.find("\r\n");
+    Serial.println("Acquiring Previous Heat Index Value...");
+    String all_data;
+    while(client.available()){
+      all_data += client.readStringUntil('}');
+    }
+    all_data.substring('{', '}');
+    all_data.trim();
+    all_data.remove(all_data.length()-2, 2);
+    all_data += "}";
+    // Serial.println(all_data);
+    const char* json = all_data.c_str();
+    const size_t capacity = JSON_OBJECT_SIZE(3) + 70;
+    DynamicJsonDocument doc(capacity);
+    DeserializationError error = deserializeJson(doc, json);
+    if (error) {
+      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(error.c_str());
+      return;
+    }
+    global_heatIndex = doc["field1"].as<float>();
+    Serial.print("Heat Index:\t");
+    Serial.println(global_heatIndex, 2);
+  }
+}
+
+void getPastTemp(){
+  WiFiClient client;
+  String url = "/channels/";
+  url += String(channelID);
+  url += "/fields/2/last.json?api_key=";
+  url += readApiKey;
+  if(client.connect(server, 80)){
+    client.print(String("GET "));
+    client.print(url + " HTTP/1.1\r\n");
+    client.print("HOST: api.thingspeak.com\r\n");
+    client.print("Connection: close\r\n\r\n");
+    delay(1000);
+    char status[32] = {0};
+    client.readBytesUntil('\r', status, sizeof(status));
+    if (strcmp(status, "HTTP/1.1 200 OK") != 0) {
+      Serial.print(F("Unexpected response: "));
+      Serial.println(status);
+      return;
+    }
+    char endOfHeaders[] = "\r\n\r\n";
+    if (!client.find(endOfHeaders)) {
+      Serial.println(F("Invalid response"));
+      return;
+    }
+    client.find("\r\n");
+    Serial.println("Acquiring Previous Temperature Value...");
+    String all_data;
+    while(client.available()){
+      all_data += client.readStringUntil('}');
+    }
+    all_data.substring('{', '}');
+    all_data.trim();
+    all_data.remove(all_data.length()-2, 2);
+    all_data += "}";
+    // Serial.println(all_data);
+    const char* json = all_data.c_str();
+    const size_t capacity = JSON_OBJECT_SIZE(3) + 70;
+    DynamicJsonDocument doc(capacity);
+    DeserializationError error = deserializeJson(doc, json);
+    if (error) {
+      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(error.c_str());
+      return;
+    }
+    global_temperature = doc["field2"].as<float>();
+    Serial.print("Temperature:\t");
+    Serial.println(global_temperature, 2);
+  }
+}
+
+void getPastRH(){
+  WiFiClient client;
+  String url = "/channels/";
+  url += String(channelID);
+  url += "/fields/3/last.json?api_key=";
+  url += readApiKey;
+  if(client.connect(server, 80)){
+    client.print(String("GET "));
+    client.print(url + " HTTP/1.1\r\n");
+    client.print("HOST: api.thingspeak.com\r\n");
+    client.print("Connection: close\r\n\r\n");
+    delay(1000);
+    char status[32] = {0};
+    client.readBytesUntil('\r', status, sizeof(status));
+    if (strcmp(status, "HTTP/1.1 200 OK") != 0) {
+      Serial.print(F("Unexpected response: "));
+      Serial.println(status);
+      return;
+    }
+    char endOfHeaders[] = "\r\n\r\n";
+    if (!client.find(endOfHeaders)) {
+      Serial.println(F("Invalid response"));
+      return;
+    }
+    client.find("\r\n");
+    Serial.println("Acquiring Previous Relative Humidity Value...");
+    String all_data;
+    while(client.available()){
+      all_data += client.readStringUntil('}');
+    }
+    all_data.substring('{', '}');
+    all_data.trim();
+    all_data.remove(all_data.length()-2, 2);
+    all_data += "}";
+    // Serial.println(all_data);
+    const char* json = all_data.c_str();
+    const size_t capacity = JSON_OBJECT_SIZE(3) + 70;
+    DynamicJsonDocument doc(capacity);
+    DeserializationError error = deserializeJson(doc, json);
+    if (error) {
+      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(error.c_str());
+      return;
+    }
+    global_relativeHumidity = doc["field3"].as<float>();
+    Serial.print("Relative Humidity:\t");
+    Serial.println(global_relativeHumidity, 2);
+  }
+}
+
+
 void getTalkbackCommand(){
+  // logToThingspeak("Getting talback commands");
   WiFiClient client;
   String url = "/talkbacks/";
   url += tbID;
@@ -351,18 +525,18 @@ void connectWifi(){
   Serial.println();
 }
 
-void uploadReadings(float hi, float temp, float rh, String ss, String mt){
-  sendAllReadings(hi, temp, rh, ss, mt);
-}
+// void uploadReadings(float hi, float temp, float rh, String ss, String mt){
+//   sendAllReadings(hi, temp, rh, ss, mt);
+// }
 
 void sendSwarmSignal(int moduleNumber){
   Serial.print("Swarm Signal Source:\t");
   Serial.println(moduleNumber);
-  uploadReadings(heatIndex, temperature, relativeHumidity, "SWARM_ON", motionUpload);
+  sendAllReadings(global_heatIndex, global_temperature, global_relativeHumidity, "SWARM_ON", global_motionUpload);
 }
 
 void releaseMist(int module){
-  //Module 3
+  // logToThingspeak("Assisting mist sequence source " + String(module));
   switch(module){
     case 1:
       Serial.println("Source activation module 1");
@@ -385,46 +559,24 @@ void releaseMist(int module){
       break;
   }
   delay(5000);
-  Serial.println("Mist release sequence has ended");
 }
 
 void releaseSequence(int duration, bool mainSequence){
   //Main release is 5 seconds
   if(mainSequence){
-    Serial.println("Starting main mist sequence...");    
+    Serial.println("Starting main mist sequence...");  
+    // logToThingspeak("Starting main mist release sequence");  
   }else{
     Serial.println("Starting mist assist sequence...");
   }
   digitalWrite(solPin, 0);
   digitalWrite(pmpPin, 0);
-  delay(10000);
-  digitalWrite(solPin, 1);
-  delay(5000);
-  digitalWrite(solPin, 0);
   delay(duration);
   digitalWrite(pmpPin, 1);
   digitalWrite(solPin, 1);
   delay(1000);
-}
-
-void testOutput(){
-  Serial.println("Starting sequence...");
-  Serial.println("Expected LED Seequence");
-  //pump - solenoid
-  Serial.println("O -");
-  Serial.println("- O");
-  Serial.println("O O");
-  digitalWrite(solPin, 0);
-  digitalWrite(pmpPin, 1);
-  delay(5000);
-  digitalWrite(solPin, 1);
-  digitalWrite(pmpPin, 0);
-  delay(5000);
-  digitalWrite(solPin, 0);
-  digitalWrite(pmpPin, 0);
-  delay(5000);
-  digitalWrite(solPin, 1);
-  digitalWrite(pmpPin, 1);
+  Serial.println("Mist sequence ended");
+  // logToThingspeak("Mist sequence ended");
 }
 
 void sendAllReadings(float local_heatIndex, float local_temperature, float local_relativeHumidity, String local_swarmTrigger, String local_motion){
@@ -446,13 +598,15 @@ void sendAllReadings(float local_heatIndex, float local_temperature, float local
     postStr += fieldRelativeHumidity;
     postStr += String(local_relativeHumidity);
     postStr += fieldHeatIndexTreshold;
-    postStr += String(heatIndexTreshold);
+    postStr += String(global_heatIndexTreshold);
     postStr += fieldRelativeHumidityTreshold;
-    postStr += String(relativeHumidityTreshold);
+    postStr += String(global_relativeHumidityTreshold);
     postStr += fieldSwarmSignal;
     postStr += String(local_swarmTrigger);
     postStr += fieldMotion;
     postStr += String(local_motion);
+    // postStr += fieldLog;
+    // postStr += String(local_message);
     client.print("POST /update HTTP/1.1\n");
     client.print("HOST: api.thingspeak.com\n");
     client.print("Connection: close\n");
@@ -480,13 +634,19 @@ void sendAllReadings(float local_heatIndex, float local_temperature, float local
 
 void doPOST(){
   Serial.println("Initializing Power On Self Test");
+  // logToThingspeak("Initializing POST");
   digitalWrite(solPin, 1);
   digitalWrite(pmpPin, 1);
   delay(1000);
   digitalWrite(solPin, 0);
   digitalWrite(pmpPin, 0);
-  delay(10000);
+  delay(20000);
   digitalWrite(solPin, 1);
   digitalWrite(pmpPin, 1);
   Serial.println("POST done");
+  // logToThingspeak("POST done");
 }
+
+// void logToThingspeak(String local_message){
+//   sendAllReadings(global_heatIndex, global_temperature, global_relativeHumidity, "SWARM_OFF", global_motionUpload, local_message);
+// }
