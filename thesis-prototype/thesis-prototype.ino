@@ -23,13 +23,6 @@ String tbApiKey = "WGTNUEUDPAYLS3PN";     //Channel 1;
 String moduleName = "Module 1";           //Channel 1;
 int moduleNumber = 1;                     //Channel 1;
 int channelID = 630835;                   //Channel 1;
-//String readApiKey = "SR26KL05EWR7E2YZ";   //Channel 2;
-//String writeApiKey = "N4CZSPBXEJF4U16D";  //Channel 2;
-//String tbID = "32823";                    //Channel 2;
-//String tbApiKey = "KGUQTLB8771TD7CV";     //Channel 2;
-//String moduleName = "Module 2";           //Channel 2;
-//int moduleNumber = 2;                     //Channel 2;
-//int channelID = 649321;                   //Channel 2;
 //String readApiKey = "0YG3YFK75U80P940";   //Channel 3;
 //String writeApiKey = "XOIG3YFOHR4OK8MW";  //Channel 3;
 //String tbID = "32824";                    //Channel 3;
@@ -37,13 +30,13 @@ int channelID = 630835;                   //Channel 1;
 //String moduleName = "Module 3";           //Channel 3;
 //int moduleNumber = 3;                     //Channel 3;
 //int channelID = 743475;                   //Channel 3;
-//String readApiKey = "KDIUJMWUGI9QPHPJ";   //Channel 4;
-//String writeApiKey = "S2E20R36YWWDAMMC";  //Channel 4;
-//String tbID = "32825";                    //Channel 4;
-//String tbApiKey = "T7X7SYQN5K6Z9KK5";     //Channel 4;
-//String moduleName = "Module 4";           //Channel 4;
-//int moduleNumber = 4;                     //Channel 4;
-//int channelID = 749656;                   //Channel 4;
+//String readApiKey = "KDIUJMWUGI9QPHPJ";   //Channel 2;
+//String writeApiKey = "S2E20R36YWWDAMMC";  //Channel 2;
+//String tbID = "32825";                    //Channel 2;
+//String tbApiKey = "T7X7SYQN5K6Z9KK5";     //Channel 2;
+//String moduleName = "Module 2";           //Channel 2;
+//int moduleNumber = 4;                     //Channel 2;
+//int channelID = 749656;                   //Channel 2;
 const char* server = "api.thingspeak.com";
 int sent = 0;
 bool delayForMist = false;
@@ -56,14 +49,13 @@ String fieldRelativeHumidityTreshold = "&field5=";
 String fieldSwarmSignal = "&field6=";
 String fieldMotion = "&field7=";
 String fieldLog = "&field8=";
-const unsigned long postingInterval = 200000;
 long lastUpdateTime = 0;
 float global_heatIndex = 0;
 float global_temperature = 0;
 float global_relativeHumidity = 0;
 float global_heatIndexTreshold = 0;
 float global_relativeHumidityTreshold = 0;
-int defaultMistDuration = 5000;
+int defaultMistDuration = 4000;
 int lastMainReleaseCount = 10;
 int mainReleaseMax = 10;
 int dhtReadLoop = 5;
@@ -72,6 +64,7 @@ int motionReadLoop = 10;
 int maxReadPIR = 10;
 bool recordedMotion = true;
 String global_motionUpload = "FALSE";
+const int postDelay = 5000;
 
 DHTesp dht;
 ESP8266WiFiMulti wifiMulti;
@@ -540,19 +533,19 @@ void releaseMist(int module){
   switch(module){
     case 1:
       Serial.println("Source activation module 1");
-      releaseSequence(5000 / 4, false);
+      releaseSequence(defaultMistDuration / 4, false);
       break;
     case 2:
       Serial.println("Source activation module 2");
-      releaseSequence(5000 / 4, false);
+      releaseSequence(defaultMistDuration / 4, false);
       break;
     case 3:
       Serial.println("Source activation module 3");
-      releaseSequence(5000 / 4, false);
+      releaseSequence(defaultMistDuration / 4, false);
       break;
     case 4:
       Serial.println("Source activation module 4");
-      releaseSequence(5000 / 4, false);
+      releaseSequence(defaultMistDuration / 4, false);
       break;
     default:
       Serial.println("Default flow");
@@ -640,7 +633,7 @@ void doPOST(){
   delay(1000);
   digitalWrite(solPin, 0);
   digitalWrite(pmpPin, 0);
-  delay(20000);
+  delay(postDelay);
   digitalWrite(solPin, 1);
   digitalWrite(pmpPin, 1);
   Serial.println("POST done");
